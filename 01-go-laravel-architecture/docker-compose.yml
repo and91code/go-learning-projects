@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  # Banco de Dados MySQL
+  db:
+    image: mysql:8.0
+    container_name: taskflow_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: taskflow_db
+      MYSQL_USER: taskflow_user
+      MYSQL_PASSWORD: taskflow_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./.data/mysql_data:/var/lib/mysql
+    networks:
+      - taskflow_network
+
+  # Backend em Go
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskflow_backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: db
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+    networks:
+      - taskflow_network
+
+networks:
+  taskflow_network:
+    driver: bridge
