@@ -32,6 +32,7 @@ func (s *taskService) CreateTask(ctx context.Context, request dto.CreateTaskRequ
 	if utf8.RuneCountInString(title) < 3 || utf8.RuneCountInString(title) > 100 {
 		return dto.TaskResponse{}, ErrInvalidTask
 	}
+
 	if request.Priority != "low" && request.Priority != "medium" && request.Priority != "high" {
 		return dto.TaskResponse{}, ErrInvalidTask
 	}

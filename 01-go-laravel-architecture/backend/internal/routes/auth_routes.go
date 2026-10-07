@@ -9,10 +9,10 @@ type AuthHandler interface {
 }
 
 // AuthRoutes registra os endpoints públicos de autenticação.
-func AuthRoutes(authHandler AuthHandler) RouteRegistrar {
+func AuthRoutes(h AuthHandler) RouteRegistrar {
 	return func(api *gin.RouterGroup) {
 		auth := api.Group("/auth")
-		auth.POST("/register", authHandler.Register)
-		auth.POST("/login", authHandler.Login)
+		auth.POST("/register", h.Register)
+		auth.POST("/login", h.Login)
 	}
 }

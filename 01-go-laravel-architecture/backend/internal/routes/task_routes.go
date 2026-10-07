@@ -8,9 +8,9 @@ type TaskHandler interface {
 }
 
 // TaskRoutes registra os endpoints do módulo de tarefas.
-func TaskRoutes(taskHandler TaskHandler) RouteRegistrar {
+func TaskRoutes(h TaskHandler) RouteRegistrar {
 	return func(api *gin.RouterGroup) {
 		tasks := api.Group("/tasks")
-		tasks.POST("", taskHandler.Store)
+		tasks.POST("", h.Store)
 	}
 }

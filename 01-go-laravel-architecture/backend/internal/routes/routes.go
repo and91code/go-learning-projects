@@ -27,7 +27,9 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 	})
 
 	api := router.Group("/api/v1")
+	AuthRoutes(module.BuildAuthModule(db))(api)
 	TaskRoutes(module.BuildTaskModule(db))(api)
+	ListRoutes(module.BuildListModule(db))(api)
 
 	return router
 }

@@ -3,3 +3,4 @@ backend/.env
 
 # Dados locais persistidos pelo Docker
 .data/
+.mysql_data/
