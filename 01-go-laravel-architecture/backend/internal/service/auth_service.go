@@ -8,100 +8,91 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/seu-usuario/taskflow-backend/internal/domain"
-	"github.com/seu-usuario/taskflow-backend/internal/dto"
-	"github.com/seu-usuario/taskflow-backend/internal/repository"
+	"github.com/seu-usuario/taskflow-backend/internal/types"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ErrInvalidCredentials = errors.New("credenciais inválidas")
-
-type AuthService interface {
-	Register(ctx context.Context, req dto.RegisterRequest) (dto.AuthResponse, error)
-	Login(ctx context.Context, req dto.LoginRequest) (dto.AuthResponse, error)
-}
-
 type authService struct {
-	userRepo repository.UserRepository
+	userRepo types.UserRepository
 }
 
-func NewAuthService(r repository.UserRepository) AuthService {
-	return &authService{userRepo: r}
+var _ types.AuthService = (*authService)(nil)
+var _ types.UserService = (*authService)(nil)
+
+func NewAuthService(repository types.UserRepository) types.AuthService {
+	return &authService{userRepo: repository}
 }
 
-func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dto.AuthResponse, error) {
-	_, err := s.userRepo.FindByEmail(ctx, req.Email)
-	if err == nil {
-		return dto.AuthResponse{}, repository.ErrEmailExists
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+func (s *authService) GetUserByID(ctx context.Context, id int64) (types.User, error) {
+	user, err := s.userRepo.FindByID(ctx, id)
 	if err != nil {
-		return dto.AuthResponse{}, fmt.Errorf("falha ao criptografar senha: %w", err)
+		return types.User{}, err
+	}
+	return *user, nil
+}
+
+func (s *authService) Register(ctx context.Context, input types.RegisterInput) (types.AuthResult, error) {
+	_, err := s.userRepo.FindByEmail(ctx, input.Email)
+	switch {
+	case err == nil:
+		return types.AuthResult{}, types.ErrEmailExists
+	case !errors.Is(err, types.ErrUserNotFound):
+		return types.AuthResult{}, fmt.Errorf("check existing user: %w", err)
 	}
 
-	user := &domain.User{
-		Name:         req.Name,
-		Email:        req.Email,
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return types.AuthResult{}, fmt.Errorf("falha ao criptografar senha: %w", err)
+	}
+
+	user := &types.User{
+		Name:         input.Name,
+		Email:        input.Email,
 		PasswordHash: string(hashedPassword),
 		CreatedAt:    time.Now(),
 	}
-
 	if err := s.userRepo.Create(ctx, user); err != nil {
-		return dto.AuthResponse{}, err
+		return types.AuthResult{}, err
 	}
 
 	token, err := generateJWT(user.ID)
 	if err != nil {
-		return dto.AuthResponse{}, err
+		return types.AuthResult{}, err
 	}
-
-	return dto.AuthResponse{
-		Token: token,
-		User: dto.UserResponse{
-			ID:        user.ID,
-			Name:      user.Name,
-			Email:     user.Email,
-			CreatedAt: user.CreatedAt.Format(time.RFC3339),
-		},
-	}, nil
+	return types.AuthResult{Token: token, User: *user}, nil
 }
 
-func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (dto.AuthResponse, error) {
-	user, err := s.userRepo.FindByEmail(ctx, req.Email)
+func (s *authService) Login(ctx context.Context, input types.LoginInput) (types.AuthResult, error) {
+	user, err := s.userRepo.FindByEmail(ctx, input.Email)
 	if err != nil {
-		return dto.AuthResponse{}, ErrInvalidCredentials
+		if errors.Is(err, types.ErrUserNotFound) {
+			return types.AuthResult{}, types.ErrInvalidCredentials
+		}
+		return types.AuthResult{}, fmt.Errorf("find user for login: %w", err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		return dto.AuthResponse{}, ErrInvalidCredentials
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+		return types.AuthResult{}, types.ErrInvalidCredentials
 	}
 
 	token, err := generateJWT(user.ID)
 	if err != nil {
-		return dto.AuthResponse{}, err
+		return types.AuthResult{}, err
 	}
-
-	return dto.AuthResponse{
-		Token: token,
-		User: dto.UserResponse{
-			ID:        user.ID,
-			Name:      user.Name,
-			Email:     user.Email,
-			CreatedAt: user.CreatedAt.Format(time.RFC3339),
-		},
-	}, nil
+	return types.AuthResult{Token: token, User: *user}, nil
 }
 
 func generateJWT(userID int64) (string, error) {
 	secret := []byte(os.Getenv("JWT_SECRET"))
+	if len(secret) == 0 {
+		return "", errors.New("JWT_SECRET não configurado")
+	}
 
 	claims := jwt.MapClaims{
 		"sub": userID,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"exp": time.Now().Add(24 * time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(secret)
 }

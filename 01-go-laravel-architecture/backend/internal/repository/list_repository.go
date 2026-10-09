@@ -6,28 +6,20 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/seu-usuario/taskflow-backend/internal/domain"
+	"github.com/seu-usuario/taskflow-backend/internal/types"
 )
-
-var ErrListNotFound = errors.New("lista não encontrada")
-
-type ListRepository interface {
-	Create(ctx context.Context, list *domain.List) error
-	FindByIDAndUserID(ctx context.Context, id, userID int64) (*domain.List, error)
-	FindByUserID(ctx context.Context, userID int64) ([]domain.List, error)
-	Update(ctx context.Context, list *domain.List) error
-	Delete(ctx context.Context, id, userID int64) error
-}
 
 type mysqlListRepository struct {
 	db *sql.DB
 }
 
-func NewListRepository(db *sql.DB) ListRepository {
+var _ types.ListRepository = (*mysqlListRepository)(nil)
+
+func NewListRepository(db *sql.DB) types.ListRepository {
 	return &mysqlListRepository{db: db}
 }
 
-func (r *mysqlListRepository) Create(ctx context.Context, list *domain.List) error {
+func (r *mysqlListRepository) Create(ctx context.Context, list *types.List) error {
 	query := `INSERT INTO lists (user_id, title, description) VALUES (?, ?, ?)`
 
 	result, err := r.db.ExecContext(ctx, query, list.UserID, list.Title, list.Description)
@@ -44,10 +36,10 @@ func (r *mysqlListRepository) Create(ctx context.Context, list *domain.List) err
 	return nil
 }
 
-func (r *mysqlListRepository) FindByIDAndUserID(ctx context.Context, id, userID int64) (*domain.List, error) {
+func (r *mysqlListRepository) FindByIDAndUserID(ctx context.Context, id, userID int64) (*types.List, error) {
 	query := `SELECT id, user_id, title, description, created_at FROM lists WHERE id = ? AND user_id = ?`
 
-	var list domain.List
+	var list types.List
 	var desc sql.NullString // Trata descrição opcional (NULL no MySQL)
 
 	err := r.db.QueryRowContext(ctx, query, id, userID).Scan(
@@ -60,7 +52,7 @@ func (r *mysqlListRepository) FindByIDAndUserID(ctx context.Context, id, userID 
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrListNotFound
+			return nil, types.ErrListNotFound
 		}
 		return nil, fmt.Errorf("repository.FindByIDAndUserID: %w", err)
 	}
@@ -72,7 +64,7 @@ func (r *mysqlListRepository) FindByIDAndUserID(ctx context.Context, id, userID 
 	return &list, nil
 }
 
-func (r *mysqlListRepository) FindByUserID(ctx context.Context, userID int64) ([]domain.List, error) {
+func (r *mysqlListRepository) FindByUserID(ctx context.Context, userID int64) ([]types.List, error) {
 	query := `SELECT id, user_id, title, description, created_at FROM lists WHERE user_id = ? ORDER BY created_at DESC`
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
@@ -81,9 +73,9 @@ func (r *mysqlListRepository) FindByUserID(ctx context.Context, userID int64) ([
 	}
 	defer rows.Close()
 
-	var lists []domain.List
+	var lists []types.List
 	for rows.Next() {
-		var l domain.List
+		var l types.List
 		var desc sql.NullString
 
 		if err := rows.Scan(&l.ID, &l.UserID, &l.Title, &desc, &l.CreatedAt); err != nil {
@@ -100,7 +92,7 @@ func (r *mysqlListRepository) FindByUserID(ctx context.Context, userID int64) ([
 	return lists, nil
 }
 
-func (r *mysqlListRepository) Update(ctx context.Context, list *domain.List) error {
+func (r *mysqlListRepository) Update(ctx context.Context, list *types.List) error {
 	query := `UPDATE lists SET title = ?, description = ? WHERE id = ? AND user_id = ?`
 
 	result, err := r.db.ExecContext(ctx, query, list.Title, list.Description, list.ID, list.UserID)
@@ -114,7 +106,7 @@ func (r *mysqlListRepository) Update(ctx context.Context, list *domain.List) err
 	}
 
 	if rows == 0 {
-		return ErrListNotFound
+		return types.ErrListNotFound
 	}
 
 	return nil
@@ -134,7 +126,7 @@ func (r *mysqlListRepository) Delete(ctx context.Context, id, userID int64) erro
 	}
 
 	if rows == 0 {
-		return ErrListNotFound
+		return types.ErrListNotFound
 	}
 
 	return nil

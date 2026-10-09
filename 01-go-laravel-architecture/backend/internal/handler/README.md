@@ -16,7 +16,8 @@ Atualmente, há handlers para autenticação, listas e tarefas.
 
 - Mantenha aqui as preocupações do protocolo HTTP, como status, parâmetros, JSON e contexto da requisição.
 - Encaminhe a execução dos casos de uso aos serviços; evite concentrar regras de negócio nos handlers.
-- Use DTOs para estruturar os dados recebidos e enviados pela API.
+- Use DTOs para estruturar os dados recebidos e enviados pela API e seus mappers para converter entre `internal/dto` e `internal/types`.
+- Injete interfaces de serviço declaradas em `internal/types`.
 - Não execute queries SQL nem acesse o banco diretamente.
 - Trate erros retornados pelos serviços de forma explícita e converta-os para respostas HTTP adequadas.
 - Registre rotas na camada de rotas, sem misturar o registro de endpoints com a implementação dos handlers.

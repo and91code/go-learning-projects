@@ -8,15 +8,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/seu-usuario/taskflow-backend/internal/dto"
 	"github.com/seu-usuario/taskflow-backend/internal/middleware"
-	"github.com/seu-usuario/taskflow-backend/internal/repository"
-	"github.com/seu-usuario/taskflow-backend/internal/service"
+	"github.com/seu-usuario/taskflow-backend/internal/types"
 )
 
 type ListHandler struct {
-	listService service.ListService
+	listService types.ListService
 }
 
-func NewListHandler(s service.ListService) *ListHandler {
+func NewListHandler(s types.ListService) *ListHandler {
 	return &ListHandler{listService: s}
 }
 
@@ -29,25 +28,25 @@ func (h *ListHandler) Store(c *gin.Context) {
 		return
 	}
 
-	res, err := h.listService.CreateList(c.Request.Context(), userID, req)
+	list, err := h.listService.CreateList(c.Request.Context(), userID, req.ToDomain())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, res)
+	c.JSON(http.StatusCreated, dto.ListResponseFromDomain(list))
 }
 
 func (h *ListHandler) Index(c *gin.Context) {
 	userID := c.MustGet(middleware.UserIDKey).(int64)
 
-	res, err := h.listService.GetUserLists(c.Request.Context(), userID)
+	lists, err := h.listService.GetUserLists(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, dto.ListResponsesFromDomain(lists))
 }
 
 func (h *ListHandler) Show(c *gin.Context) {
@@ -58,9 +57,9 @@ func (h *ListHandler) Show(c *gin.Context) {
 		return
 	}
 
-	res, err := h.listService.GetListByID(c.Request.Context(), id, userID)
+	list, err := h.listService.GetListByID(c.Request.Context(), id, userID)
 	if err != nil {
-		if errors.Is(err, repository.ErrListNotFound) {
+		if errors.Is(err, types.ErrListNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
@@ -68,5 +67,5 @@ func (h *ListHandler) Show(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, dto.ListResponseFromDomain(list))
 }

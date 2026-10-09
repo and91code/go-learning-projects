@@ -6,15 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/seu-usuario/taskflow-backend/internal/dto"
-	"github.com/seu-usuario/taskflow-backend/internal/repository"
-	"github.com/seu-usuario/taskflow-backend/internal/service"
+	"github.com/seu-usuario/taskflow-backend/internal/types"
 )
 
 type AuthHandler struct {
-	authService service.AuthService
+	authService types.AuthService
 }
 
-func NewAuthHandler(s service.AuthService) *AuthHandler {
+func NewAuthHandler(s types.AuthService) *AuthHandler {
 	return &AuthHandler{authService: s}
 }
 
@@ -26,9 +25,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	res, err := h.authService.Register(c.Request.Context(), req)
+	result, err := h.authService.Register(c.Request.Context(), req.ToDomain())
 	if err != nil {
-		if errors.Is(err, repository.ErrEmailExists) {
+		if errors.Is(err, types.ErrEmailExists) {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
@@ -36,7 +35,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, res)
+	c.JSON(http.StatusCreated, dto.AuthResponseFromDomain(result))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -47,9 +46,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	res, err := h.authService.Login(c.Request.Context(), req)
+	result, err := h.authService.Login(c.Request.Context(), req.ToDomain())
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidCredentials) {
+		if errors.Is(err, types.ErrInvalidCredentials) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
@@ -57,5 +56,5 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, dto.AuthResponseFromDomain(result))
 }

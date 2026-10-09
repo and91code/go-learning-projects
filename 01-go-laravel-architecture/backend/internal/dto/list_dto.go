@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/seu-usuario/taskflow-backend/internal/types"
+)
 
 // CreateListRequest representa o payload para criação de lista (Form Request)
 type CreateListRequest struct {
@@ -32,13 +36,47 @@ type TagResponse struct {
 	Color string `json:"color"`
 }
 
-// FormatListResponse converte uma Entidade de Domínio para o DTO de resposta
-func FormatListResponse(id, userID int64, title, description string, createdAt time.Time) ListResponse {
-	return ListResponse{
-		ID:          id,
-		UserID:      userID,
-		Title:       title,
-		Description: description,
-		CreatedAt:   createdAt.Format(time.RFC3339),
+func (req CreateListRequest) ToDomain() types.List {
+	return types.List{
+		Title:       req.Title,
+		Description: req.Description,
 	}
+}
+
+func (req UpdateListRequest) ToDomain() types.List {
+	return types.List{
+		Title:       req.Title,
+		Description: req.Description,
+	}
+}
+
+func ListResponseFromDomain(list types.List) ListResponse {
+	response := ListResponse{
+		ID:          list.ID,
+		UserID:      list.UserID,
+		Title:       list.Title,
+		Description: list.Description,
+		CreatedAt:   list.CreatedAt.Format(time.RFC3339),
+	}
+	if len(list.Tasks) > 0 {
+		response.Tasks = make([]TaskResponse, 0, len(list.Tasks))
+		for _, task := range list.Tasks {
+			response.Tasks = append(response.Tasks, TaskResponseFromDomain(task))
+		}
+	}
+	if len(list.Tags) > 0 {
+		response.Tags = make([]TagResponse, 0, len(list.Tags))
+		for _, tag := range list.Tags {
+			response.Tags = append(response.Tags, TagResponse{ID: tag.ID, Name: tag.Name, Color: tag.Color})
+		}
+	}
+	return response
+}
+
+func ListResponsesFromDomain(lists []types.List) []ListResponse {
+	responses := make([]ListResponse, 0, len(lists))
+	for _, list := range lists {
+		responses = append(responses, ListResponseFromDomain(list))
+	}
+	return responses
 }

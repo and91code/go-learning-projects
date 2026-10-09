@@ -4,81 +4,54 @@ import (
 	"context"
 	"time"
 
-	"github.com/seu-usuario/taskflow-backend/internal/domain"
-	"github.com/seu-usuario/taskflow-backend/internal/dto"
-	"github.com/seu-usuario/taskflow-backend/internal/repository"
+	"github.com/seu-usuario/taskflow-backend/internal/types"
 )
 
-type ListService interface {
-	CreateList(ctx context.Context, userID int64, req dto.CreateListRequest) (dto.ListResponse, error)
-	GetListByID(ctx context.Context, id, userID int64) (dto.ListResponse, error)
-	GetUserLists(ctx context.Context, userID int64) ([]dto.ListResponse, error)
-	UpdateList(ctx context.Context, id, userID int64, req dto.UpdateListRequest) (dto.ListResponse, error)
-	DeleteList(ctx context.Context, id, userID int64) error
-}
-
 type listService struct {
-	repo repository.ListRepository
+	repository types.ListRepository
 }
 
-func NewListService(r repository.ListRepository) ListService {
-	return &listService{repo: r}
+var _ types.ListService = (*listService)(nil)
+
+func NewListService(repository types.ListRepository) types.ListService {
+	return &listService{repository: repository}
 }
 
-func (s *listService) CreateList(ctx context.Context, userID int64, req dto.CreateListRequest) (dto.ListResponse, error) {
-	list := &domain.List{
-		UserID:      userID,
-		Title:       req.Title,
-		Description: req.Description,
-		CreatedAt:   time.Now(),
+func (s *listService) CreateList(ctx context.Context, userID int64, list types.List) (types.List, error) {
+	list.UserID = userID
+	list.CreatedAt = time.Now()
+	if err := s.repository.Create(ctx, &list); err != nil {
+		return types.List{}, err
 	}
-
-	if err := s.repo.Create(ctx, list); err != nil {
-		return dto.ListResponse{}, err
-	}
-
-	return dto.FormatListResponse(list.ID, list.UserID, list.Title, list.Description, list.CreatedAt), nil
+	return list, nil
 }
 
-func (s *listService) GetListByID(ctx context.Context, id, userID int64) (dto.ListResponse, error) {
-	list, err := s.repo.FindByIDAndUserID(ctx, id, userID)
+func (s *listService) GetListByID(ctx context.Context, id, userID int64) (types.List, error) {
+	list, err := s.repository.FindByIDAndUserID(ctx, id, userID)
 	if err != nil {
-		return dto.ListResponse{}, err
+		return types.List{}, err
 	}
-
-	return dto.FormatListResponse(list.ID, list.UserID, list.Title, list.Description, list.CreatedAt), nil
+	return *list, nil
 }
 
-func (s *listService) GetUserLists(ctx context.Context, userID int64) ([]dto.ListResponse, error) {
-	lists, err := s.repo.FindByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	responses := make([]dto.ListResponse, 0, len(lists))
-	for _, list := range lists {
-		responses = append(responses, dto.FormatListResponse(list.ID, list.UserID, list.Title, list.Description, list.CreatedAt))
-	}
-
-	return responses, nil
+func (s *listService) GetUserLists(ctx context.Context, userID int64) ([]types.List, error) {
+	return s.repository.FindByUserID(ctx, userID)
 }
 
-func (s *listService) UpdateList(ctx context.Context, id, userID int64, req dto.UpdateListRequest) (dto.ListResponse, error) {
-	list, err := s.repo.FindByIDAndUserID(ctx, id, userID)
+func (s *listService) UpdateList(ctx context.Context, id, userID int64, update types.List) (types.List, error) {
+	list, err := s.repository.FindByIDAndUserID(ctx, id, userID)
 	if err != nil {
-		return dto.ListResponse{}, err
+		return types.List{}, err
 	}
 
-	list.Title = req.Title
-	list.Description = req.Description
-
-	if err := s.repo.Update(ctx, list); err != nil {
-		return dto.ListResponse{}, err
+	list.Title = update.Title
+	list.Description = update.Description
+	if err := s.repository.Update(ctx, list); err != nil {
+		return types.List{}, err
 	}
-
-	return dto.FormatListResponse(list.ID, list.UserID, list.Title, list.Description, list.CreatedAt), nil
+	return *list, nil
 }
 
 func (s *listService) DeleteList(ctx context.Context, id, userID int64) error {
-	return s.repo.Delete(ctx, id, userID)
+	return s.repository.Delete(ctx, id, userID)
 }

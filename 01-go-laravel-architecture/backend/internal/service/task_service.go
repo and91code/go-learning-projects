@@ -2,50 +2,100 @@ package service
 
 import (
 	"context"
-	"errors"
 	"strings"
+	"time"
 	"unicode/utf8"
 
-	"github.com/seu-usuario/taskflow-backend/internal/dto"
+	"github.com/seu-usuario/taskflow-backend/internal/types"
 )
 
-var ErrInvalidTask = errors.New("invalid task")
-
-type TaskRepository interface {
-	CreateTask(ctx context.Context, title, priority string) (int64, error)
-}
-
-type TaskService interface {
-	CreateTask(ctx context.Context, request dto.CreateTaskRequest) (dto.TaskResponse, error)
-}
-
 type taskService struct {
-	repository TaskRepository
+	taskRepository types.TaskRepository
+	listRepository types.ListRepository
 }
 
-func NewTaskService(repository TaskRepository) TaskService {
-	return &taskService{repository: repository}
+var _ types.TaskService = (*taskService)(nil)
+
+func NewTaskService(taskRepository types.TaskRepository, listRepository types.ListRepository) types.TaskService {
+	return &taskService{taskRepository: taskRepository, listRepository: listRepository}
 }
 
-func (s *taskService) CreateTask(ctx context.Context, request dto.CreateTaskRequest) (dto.TaskResponse, error) {
-	title := strings.TrimSpace(request.Title)
-	if utf8.RuneCountInString(title) < 3 || utf8.RuneCountInString(title) > 100 {
-		return dto.TaskResponse{}, ErrInvalidTask
+func (s *taskService) CreateTask(ctx context.Context, userID int64, task types.Task) (types.Task, error) {
+	task.Title = strings.TrimSpace(task.Title)
+	if userID <= 0 || task.ListID <= 0 || !validTaskTitle(task.Title) || !validTaskPriority(task.Priority) {
+		return types.Task{}, types.ErrInvalidTask
+	}
+	if _, err := s.listRepository.FindByIDAndUserID(ctx, task.ListID, userID); err != nil {
+		return types.Task{}, err
 	}
 
-	if request.Priority != "low" && request.Priority != "medium" && request.Priority != "high" {
-		return dto.TaskResponse{}, ErrInvalidTask
+	task.Status = types.StatusPending
+	task.CreatedAt = time.Now()
+	task.UpdatedAt = task.CreatedAt
+	if err := s.taskRepository.Create(ctx, &task); err != nil {
+		return types.Task{}, err
 	}
+	return task, nil
+}
 
-	id, err := s.repository.CreateTask(ctx, title, request.Priority)
+func (s *taskService) GetTasksByList(ctx context.Context, listID, userID int64) ([]types.Task, error) {
+	if listID <= 0 || userID <= 0 {
+		return nil, types.ErrInvalidTask
+	}
+	return s.taskRepository.FindByListIDAndUserID(ctx, listID, userID)
+}
+
+func (s *taskService) GetTaskByID(ctx context.Context, taskID, userID int64) (types.Task, error) {
+	if taskID <= 0 || userID <= 0 {
+		return types.Task{}, types.ErrInvalidTask
+	}
+	task, err := s.taskRepository.FindByIDAndUserID(ctx, taskID, userID)
 	if err != nil {
-		return dto.TaskResponse{}, err
+		return types.Task{}, err
+	}
+	return *task, nil
+}
+
+func (s *taskService) UpdateTask(ctx context.Context, taskID, userID int64, update types.Task) (types.Task, error) {
+	update.Title = strings.TrimSpace(update.Title)
+	if taskID <= 0 || userID <= 0 || !validTaskTitle(update.Title) ||
+		!validTaskPriority(update.Priority) || !validTaskStatus(update.Status) {
+		return types.Task{}, types.ErrInvalidTask
 	}
 
-	return dto.TaskResponse{
-		ID:       id,
-		Title:    title,
-		Priority: request.Priority,
-		Status:   "pending",
-	}, nil
+	task, err := s.taskRepository.FindByIDAndUserID(ctx, taskID, userID)
+	if err != nil {
+		return types.Task{}, err
+	}
+	task.Title = update.Title
+	task.Description = strings.TrimSpace(update.Description)
+	task.Status = update.Status
+	task.Priority = update.Priority
+	task.DueDate = update.DueDate
+	task.UpdatedAt = time.Now()
+
+	if err := s.taskRepository.Update(ctx, task, userID); err != nil {
+		return types.Task{}, err
+	}
+	return *task, nil
+}
+
+func (s *taskService) DeleteTask(ctx context.Context, taskID, userID int64) error {
+	if taskID <= 0 || userID <= 0 {
+		return types.ErrInvalidTask
+	}
+	return s.taskRepository.Delete(ctx, taskID, userID)
+}
+
+func validTaskTitle(title string) bool {
+	length := utf8.RuneCountInString(title)
+	return length >= 3 && length <= 150
+}
+
+func validTaskPriority(priority types.TaskPriority) bool {
+	return priority == types.PriorityLow || priority == types.PriorityMedium || priority == types.PriorityHigh
+}
+
+func validTaskStatus(status types.TaskStatus) bool {
+	return status == types.StatusPending || status == types.StatusInProgress || status == types.StatusCompleted
 }
