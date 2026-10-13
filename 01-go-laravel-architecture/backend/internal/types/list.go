@@ -16,10 +16,10 @@ type List struct {
 }
 
 type ListRepository interface {
-	Create(ctx context.Context, list *List) error
+	Create(ctx context.Context, userID int64, list *List) error
 	FindByIDAndUserID(ctx context.Context, id, userID int64) (*List, error)
 	FindByUserID(ctx context.Context, userID int64) ([]List, error)
-	Update(ctx context.Context, list *List) error
+	Update(ctx context.Context, id, userID int64, list *List) error
 	Delete(ctx context.Context, id, userID int64) error
 }
 

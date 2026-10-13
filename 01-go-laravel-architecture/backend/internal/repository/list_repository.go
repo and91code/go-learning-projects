@@ -19,10 +19,10 @@ func NewListRepository(db *sql.DB) types.ListRepository {
 	return &mysqlListRepository{db: db}
 }
 
-func (r *mysqlListRepository) Create(ctx context.Context, list *types.List) error {
+func (r *mysqlListRepository) Create(ctx context.Context, userID int64, list *types.List) error {
 	query := `INSERT INTO lists (user_id, title, description) VALUES (?, ?, ?)`
 
-	result, err := r.db.ExecContext(ctx, query, list.UserID, list.Title, list.Description)
+	result, err := r.db.ExecContext(ctx, query, userID, list.Title, list.Description)
 	if err != nil {
 		return fmt.Errorf("repository.Create: %w", err)
 	}
@@ -92,10 +92,10 @@ func (r *mysqlListRepository) FindByUserID(ctx context.Context, userID int64) ([
 	return lists, nil
 }
 
-func (r *mysqlListRepository) Update(ctx context.Context, list *types.List) error {
+func (r *mysqlListRepository) Update(ctx context.Context, id, userID int64, list *types.List) error {
 	query := `UPDATE lists SET title = ?, description = ? WHERE id = ? AND user_id = ?`
 
-	result, err := r.db.ExecContext(ctx, query, list.Title, list.Description, list.ID, list.UserID)
+	result, err := r.db.ExecContext(ctx, query, list.Title, list.Description, id, userID)
 	if err != nil {
 		return fmt.Errorf("repository.Update: %w", err)
 	}
@@ -106,7 +106,9 @@ func (r *mysqlListRepository) Update(ctx context.Context, list *types.List) erro
 	}
 
 	if rows == 0 {
-		return types.ErrListNotFound
+		if _, err := r.FindByIDAndUserID(ctx, id, userID); err != nil {
+			return err
+		}
 	}
 
 	return nil

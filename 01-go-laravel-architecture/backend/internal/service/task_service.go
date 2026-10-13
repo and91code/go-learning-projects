@@ -22,38 +22,24 @@ func NewTaskService(taskRepository types.TaskRepository, listRepository types.Li
 
 func (s *taskService) CreateTask(ctx context.Context, userID int64, task types.Task) (types.Task, error) {
 	task.Title = strings.TrimSpace(task.Title)
+
 	if userID <= 0 || task.ListID <= 0 || !validTaskTitle(task.Title) || !validTaskPriority(task.Priority) {
 		return types.Task{}, types.ErrInvalidTask
 	}
+
+	// validação SE o listID informado pertence ao userID
 	if _, err := s.listRepository.FindByIDAndUserID(ctx, task.ListID, userID); err != nil {
 		return types.Task{}, err
 	}
 
+	// atribuições DEFAULT
 	task.Status = types.StatusPending
 	task.CreatedAt = time.Now()
 	task.UpdatedAt = task.CreatedAt
-	if err := s.taskRepository.Create(ctx, &task); err != nil {
+	if err := s.taskRepository.Create(ctx, userID, &task); err != nil {
 		return types.Task{}, err
 	}
 	return task, nil
-}
-
-func (s *taskService) GetTasksByList(ctx context.Context, listID, userID int64) ([]types.Task, error) {
-	if listID <= 0 || userID <= 0 {
-		return nil, types.ErrInvalidTask
-	}
-	return s.taskRepository.FindByListIDAndUserID(ctx, listID, userID)
-}
-
-func (s *taskService) GetTaskByID(ctx context.Context, taskID, userID int64) (types.Task, error) {
-	if taskID <= 0 || userID <= 0 {
-		return types.Task{}, types.ErrInvalidTask
-	}
-	task, err := s.taskRepository.FindByIDAndUserID(ctx, taskID, userID)
-	if err != nil {
-		return types.Task{}, err
-	}
-	return *task, nil
 }
 
 func (s *taskService) UpdateTask(ctx context.Context, taskID, userID int64, update types.Task) (types.Task, error) {
@@ -74,7 +60,7 @@ func (s *taskService) UpdateTask(ctx context.Context, taskID, userID int64, upda
 	task.DueDate = update.DueDate
 	task.UpdatedAt = time.Now()
 
-	if err := s.taskRepository.Update(ctx, task, userID); err != nil {
+	if err := s.taskRepository.Update(ctx, taskID, userID, task); err != nil {
 		return types.Task{}, err
 	}
 	return *task, nil
@@ -85,6 +71,24 @@ func (s *taskService) DeleteTask(ctx context.Context, taskID, userID int64) erro
 		return types.ErrInvalidTask
 	}
 	return s.taskRepository.Delete(ctx, taskID, userID)
+}
+
+func (s *taskService) GetTasksByList(ctx context.Context, listID, userID int64) ([]types.Task, error) {
+	if listID <= 0 || userID <= 0 {
+		return nil, types.ErrInvalidTask
+	}
+	return s.taskRepository.FindByListIDAndUserID(ctx, listID, userID)
+}
+
+func (s *taskService) GetTaskByID(ctx context.Context, taskID, userID int64) (types.Task, error) {
+	if taskID <= 0 || userID <= 0 {
+		return types.Task{}, types.ErrInvalidTask
+	}
+	task, err := s.taskRepository.FindByIDAndUserID(ctx, taskID, userID)
+	if err != nil {
+		return types.Task{}, err
+	}
+	return *task, nil
 }
 
 func validTaskTitle(title string) bool {

@@ -16,8 +16,8 @@ type MockTaskRepository struct {
 	mock.Mock
 }
 
-func (m *MockTaskRepository) Create(ctx context.Context, task *types.Task) error {
-	return m.Called(ctx, task).Error(0)
+func (m *MockTaskRepository) Create(ctx context.Context, userID int64, task *types.Task) error {
+	return m.Called(ctx, userID, task).Error(0)
 }
 
 func (m *MockTaskRepository) FindByIDAndUserID(ctx context.Context, taskID, userID int64) (*types.Task, error) {
@@ -32,8 +32,8 @@ func (m *MockTaskRepository) FindByListIDAndUserID(ctx context.Context, listID, 
 	return tasks, args.Error(1)
 }
 
-func (m *MockTaskRepository) Update(ctx context.Context, task *types.Task, userID int64) error {
-	return m.Called(ctx, task, userID).Error(0)
+func (m *MockTaskRepository) Update(ctx context.Context, taskID, userID int64, task *types.Task) error {
+	return m.Called(ctx, taskID, userID, task).Error(0)
 }
 
 func (m *MockTaskRepository) Delete(ctx context.Context, taskID, userID int64) error {
@@ -44,8 +44,8 @@ type MockListRepository struct {
 	mock.Mock
 }
 
-func (m *MockListRepository) Create(ctx context.Context, list *types.List) error {
-	return m.Called(ctx, list).Error(0)
+func (m *MockListRepository) Create(ctx context.Context, userID int64, list *types.List) error {
+	return m.Called(ctx, userID, list).Error(0)
 }
 
 func (m *MockListRepository) FindByIDAndUserID(ctx context.Context, id, userID int64) (*types.List, error) {
@@ -60,8 +60,8 @@ func (m *MockListRepository) FindByUserID(ctx context.Context, userID int64) ([]
 	return lists, args.Error(1)
 }
 
-func (m *MockListRepository) Update(ctx context.Context, list *types.List) error {
-	return m.Called(ctx, list).Error(0)
+func (m *MockListRepository) Update(ctx context.Context, id, userID int64, list *types.List) error {
+	return m.Called(ctx, id, userID, list).Error(0)
 }
 
 func (m *MockListRepository) Delete(ctx context.Context, id, userID int64) error {
@@ -77,11 +77,11 @@ func TestCreateTask_Success(t *testing.T) {
 	listRepo := new(MockListRepository)
 	listRepo.On("FindByIDAndUserID", mock.Anything, int64(8), int64(7)).
 		Return(&types.List{ID: 8, UserID: 7}, nil).Once()
-	taskRepo.On("Create", mock.Anything, mock.MatchedBy(func(task *types.Task) bool {
+	taskRepo.On("Create", mock.Anything, int64(7), mock.MatchedBy(func(task *types.Task) bool {
 		return task.ListID == 8 && task.Title == "Read a book" &&
 			task.Priority == types.PriorityHigh && task.Status == types.StatusPending
 	})).Run(func(args mock.Arguments) {
-		args.Get(1).(*types.Task).ID = 42
+		args.Get(2).(*types.Task).ID = 42
 	}).Return(nil).Once()
 	svc := newTaskService(taskRepo, listRepo)
 
@@ -111,7 +111,7 @@ func TestCreateTask_InvalidPriority(t *testing.T) {
 	assert.ErrorIs(t, err, types.ErrInvalidTask)
 	assert.Empty(t, result)
 	listRepo.AssertNotCalled(t, "FindByIDAndUserID", mock.Anything, mock.Anything, mock.Anything)
-	taskRepo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+	taskRepo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestCreateTask_EmptyTitle(t *testing.T) {
@@ -125,7 +125,7 @@ func TestCreateTask_EmptyTitle(t *testing.T) {
 
 	assert.ErrorIs(t, err, types.ErrInvalidTask)
 	assert.Empty(t, result)
-	taskRepo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+	taskRepo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestCreateTask_RepositoryError(t *testing.T) {
@@ -134,7 +134,7 @@ func TestCreateTask_RepositoryError(t *testing.T) {
 	listRepo := new(MockListRepository)
 	listRepo.On("FindByIDAndUserID", mock.Anything, int64(8), int64(7)).
 		Return(&types.List{ID: 8, UserID: 7}, nil).Once()
-	taskRepo.On("Create", mock.Anything, mock.Anything).Return(repositoryErr).Once()
+	taskRepo.On("Create", mock.Anything, int64(7), mock.Anything).Return(repositoryErr).Once()
 	svc := newTaskService(taskRepo, listRepo)
 
 	result, err := svc.CreateTask(context.Background(), 7, types.Task{
@@ -145,4 +145,23 @@ func TestCreateTask_RepositoryError(t *testing.T) {
 	assert.Empty(t, result)
 	taskRepo.AssertExpectations(t)
 	listRepo.AssertExpectations(t)
+}
+
+func TestUpdateTask_PassesTaskAndUserIDsToRepository(t *testing.T) {
+	taskRepo := new(MockTaskRepository)
+	listRepo := new(MockListRepository)
+	taskRepo.On("FindByIDAndUserID", mock.Anything, int64(42), int64(7)).
+		Return(&types.Task{ID: 42, ListID: 8}, nil).Once()
+	taskRepo.On("Update", mock.Anything, int64(42), int64(7), mock.MatchedBy(func(task *types.Task) bool {
+		return task.ID == 42 && task.Title == "Updated task"
+	})).Return(nil).Once()
+	svc := newTaskService(taskRepo, listRepo)
+
+	result, err := svc.UpdateTask(context.Background(), 42, 7, types.Task{
+		Title: "Updated task", Status: types.StatusInProgress, Priority: types.PriorityHigh,
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, "Updated task", result.Title)
+	taskRepo.AssertExpectations(t)
 }

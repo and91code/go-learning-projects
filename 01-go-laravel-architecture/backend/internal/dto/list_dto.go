@@ -29,13 +29,6 @@ type ListResponse struct {
 	Tags        []TagResponse  `json:"tags,omitempty"`
 }
 
-// TagResponse representa o DTO simplificado da Tag
-type TagResponse struct {
-	ID    int64  `json:"id"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
-}
-
 func (req CreateListRequest) ToDomain() types.List {
 	return types.List{
 		Title:       req.Title,
@@ -67,7 +60,7 @@ func ListResponseFromDomain(list types.List) ListResponse {
 	if len(list.Tags) > 0 {
 		response.Tags = make([]TagResponse, 0, len(list.Tags))
 		for _, tag := range list.Tags {
-			response.Tags = append(response.Tags, TagResponse{ID: tag.ID, Name: tag.Name, Color: tag.Color})
+			response.Tags = append(response.Tags, TagResponseFromDomain(tag))
 		}
 	}
 	return response

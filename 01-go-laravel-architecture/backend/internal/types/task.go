@@ -34,25 +34,18 @@ type Task struct {
 	Tags        []Tag
 }
 
-type Tag struct {
-	ID     int64
-	ListID int64
-	Name   string
-	Color  string
-}
-
 type TaskRepository interface {
-	Create(ctx context.Context, task *Task) error
-	FindByIDAndUserID(ctx context.Context, taskID, userID int64) (*Task, error)
-	FindByListIDAndUserID(ctx context.Context, listID, userID int64) ([]Task, error)
-	Update(ctx context.Context, task *Task, userID int64) error
+	Create(ctx context.Context, userID int64, task *Task) error
+	Update(ctx context.Context, taskID, userID int64, task *Task) error
 	Delete(ctx context.Context, taskID, userID int64) error
+	FindByListIDAndUserID(ctx context.Context, listID, userID int64) ([]Task, error)
+	FindByIDAndUserID(ctx context.Context, taskID, userID int64) (*Task, error)
 }
 
 type TaskService interface {
 	CreateTask(ctx context.Context, userID int64, task Task) (Task, error)
-	GetTasksByList(ctx context.Context, listID, userID int64) ([]Task, error)
-	GetTaskByID(ctx context.Context, taskID, userID int64) (Task, error)
 	UpdateTask(ctx context.Context, taskID, userID int64, task Task) (Task, error)
 	DeleteTask(ctx context.Context, taskID, userID int64) error
+	GetTasksByList(ctx context.Context, listID, userID int64) ([]Task, error)
+	GetTaskByID(ctx context.Context, taskID, userID int64) (Task, error)
 }

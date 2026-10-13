@@ -99,7 +99,7 @@ func TaskResponseFromDomain(task types.Task) TaskResponse {
 	if len(task.Tags) > 0 {
 		response.Tags = make([]TagResponse, 0, len(task.Tags))
 		for _, tag := range task.Tags {
-			response.Tags = append(response.Tags, TagResponse{ID: tag.ID, Name: tag.Name, Color: tag.Color})
+			response.Tags = append(response.Tags, TagResponseFromDomain(tag))
 		}
 	}
 	return response

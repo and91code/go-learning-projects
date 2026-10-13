@@ -19,16 +19,26 @@ func NewTaskRepository(db *sql.DB) types.TaskRepository {
 	return &mysqlTaskRepository{db: db}
 }
 
-func (r *mysqlTaskRepository) Create(ctx context.Context, task *types.Task) error {
+func (r *mysqlTaskRepository) Create(ctx context.Context, userID int64, task *types.Task) error {
 	query := `
 		INSERT INTO tasks (list_id, title, description, status, priority, due_date)
-		VALUES (?, ?, ?, ?, ?, ?)
+		SELECT l.id, ?, ?, ?, ?, ?
+		FROM lists l
+		WHERE l.id = ? AND l.user_id = ?
 	`
 	result, err := r.db.ExecContext(ctx, query,
-		task.ListID, task.Title, task.Description, task.Status, task.Priority, task.DueDate,
+		task.Title, task.Description, task.Status, task.Priority, task.DueDate, task.ListID, userID,
 	)
 	if err != nil {
 		return fmt.Errorf("taskRepository.Create: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("taskRepository.Create RowsAffected: %w", err)
+	}
+	if rows == 0 {
+		return types.ErrListNotFound
 	}
 
 	id, err := result.LastInsertId()
@@ -37,6 +47,57 @@ func (r *mysqlTaskRepository) Create(ctx context.Context, task *types.Task) erro
 	}
 
 	task.ID = id
+	return nil
+}
+
+func (r *mysqlTaskRepository) Update(ctx context.Context, taskID, userID int64, task *types.Task) error {
+	query := `
+		UPDATE tasks t
+		INNER JOIN lists l ON l.id = t.list_id
+		SET t.title = ?, t.description = ?, t.status = ?, t.priority = ?, t.due_date = ?
+		WHERE t.id = ? AND l.user_id = ?
+	`
+
+	result, err := r.db.ExecContext(ctx, query,
+		task.Title, task.Description, task.Status, task.Priority, task.DueDate, taskID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("taskRepository.Update: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("taskRepository.Update RowsAffected: %w", err)
+	}
+	if rows == 0 {
+		if _, err := r.FindByIDAndUserID(ctx, taskID, userID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *mysqlTaskRepository) Delete(ctx context.Context, taskID, userID int64) error {
+	query := `
+		DELETE t FROM tasks t
+		INNER JOIN lists l ON l.id = t.list_id
+		WHERE t.id = ? AND l.user_id = ?
+	`
+
+	result, err := r.db.ExecContext(ctx, query, taskID, userID)
+	if err != nil {
+		return fmt.Errorf("taskRepository.Delete: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("taskRepository.Delete RowsAffected: %w", err)
+	}
+	if rows == 0 {
+		return types.ErrTaskNotFound
+	}
+
 	return nil
 }
 
@@ -109,55 +170,4 @@ func (r *mysqlTaskRepository) FindByListIDAndUserID(ctx context.Context, listID,
 	}
 
 	return tasks, nil
-}
-
-func (r *mysqlTaskRepository) Update(ctx context.Context, task *types.Task, userID int64) error {
-	query := `
-		UPDATE tasks t
-		INNER JOIN lists l ON l.id = t.list_id
-		SET t.title = ?, t.description = ?, t.status = ?, t.priority = ?, t.due_date = ?
-		WHERE t.id = ? AND l.user_id = ?
-	`
-
-	result, err := r.db.ExecContext(ctx, query,
-		task.Title, task.Description, task.Status, task.Priority, task.DueDate, task.ID, userID,
-	)
-	if err != nil {
-		return fmt.Errorf("taskRepository.Update: %w", err)
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("taskRepository.Update RowsAffected: %w", err)
-	}
-	if rows == 0 {
-		if _, err := r.FindByIDAndUserID(ctx, task.ID, userID); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (r *mysqlTaskRepository) Delete(ctx context.Context, taskID, userID int64) error {
-	query := `
-		DELETE t FROM tasks t
-		INNER JOIN lists l ON l.id = t.list_id
-		WHERE t.id = ? AND l.user_id = ?
-	`
-
-	result, err := r.db.ExecContext(ctx, query, taskID, userID)
-	if err != nil {
-		return fmt.Errorf("taskRepository.Delete: %w", err)
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("taskRepository.Delete RowsAffected: %w", err)
-	}
-	if rows == 0 {
-		return types.ErrTaskNotFound
-	}
-
-	return nil
 }

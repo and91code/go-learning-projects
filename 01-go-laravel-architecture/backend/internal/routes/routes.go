@@ -46,6 +46,7 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 		{
 			ListRoutes(modules.Lists)(apiProtectedGroup)
 			TaskRoutes(modules.Tasks)(apiProtectedGroup)
+			TagRoutes(modules.Tags)(apiProtectedGroup)
 		}
 	}
 
