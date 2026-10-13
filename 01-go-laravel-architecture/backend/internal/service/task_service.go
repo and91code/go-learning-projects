@@ -23,7 +23,8 @@ func NewTaskService(taskRepository types.TaskRepository, listRepository types.Li
 func (s *taskService) CreateTask(ctx context.Context, userID int64, task types.Task) (types.Task, error) {
 	task.Title = strings.TrimSpace(task.Title)
 
-	if userID <= 0 || task.ListID <= 0 || !validTaskTitle(task.Title) || !validTaskPriority(task.Priority) {
+	if userID <= 0 || task.ListID <= 0 || !validTaskTitle(task.Title) || !validTaskPriority(task.Priority) ||
+		!validTaskTags(task.Tags) {
 		return types.Task{}, types.ErrInvalidTask
 	}
 
@@ -45,7 +46,7 @@ func (s *taskService) CreateTask(ctx context.Context, userID int64, task types.T
 func (s *taskService) UpdateTask(ctx context.Context, taskID, userID int64, update types.Task) (types.Task, error) {
 	update.Title = strings.TrimSpace(update.Title)
 	if taskID <= 0 || userID <= 0 || !validTaskTitle(update.Title) ||
-		!validTaskPriority(update.Priority) || !validTaskStatus(update.Status) {
+		!validTaskPriority(update.Priority) || !validTaskStatus(update.Status) || !validTaskTags(update.Tags) {
 		return types.Task{}, types.ErrInvalidTask
 	}
 
@@ -58,6 +59,9 @@ func (s *taskService) UpdateTask(ctx context.Context, taskID, userID int64, upda
 	task.Status = update.Status
 	task.Priority = update.Priority
 	task.DueDate = update.DueDate
+	if update.Tags != nil {
+		task.Tags = update.Tags
+	}
 	task.UpdatedAt = time.Now()
 
 	if err := s.taskRepository.Update(ctx, taskID, userID, task); err != nil {
@@ -102,4 +106,18 @@ func validTaskPriority(priority types.TaskPriority) bool {
 
 func validTaskStatus(status types.TaskStatus) bool {
 	return status == types.StatusPending || status == types.StatusInProgress || status == types.StatusCompleted
+}
+
+func validTaskTags(tags []types.Tag) bool {
+	seen := make(map[int64]struct{}, len(tags))
+	for _, tag := range tags {
+		if tag.ID <= 0 {
+			return false
+		}
+		if _, exists := seen[tag.ID]; exists {
+			return false
+		}
+		seen[tag.ID] = struct{}{}
+	}
+	return true
 }

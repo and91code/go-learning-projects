@@ -79,14 +79,15 @@ func TestCreateTask_Success(t *testing.T) {
 		Return(&types.List{ID: 8, UserID: 7}, nil).Once()
 	taskRepo.On("Create", mock.Anything, int64(7), mock.MatchedBy(func(task *types.Task) bool {
 		return task.ListID == 8 && task.Title == "Read a book" &&
-			task.Priority == types.PriorityHigh && task.Status == types.StatusPending
+			task.Priority == types.PriorityHigh && task.Status == types.StatusPending &&
+			assert.Equal(t, []types.Tag{{ID: 15}}, task.Tags)
 	})).Run(func(args mock.Arguments) {
 		args.Get(2).(*types.Task).ID = 42
 	}).Return(nil).Once()
 	svc := newTaskService(taskRepo, listRepo)
 
 	result, err := svc.CreateTask(context.Background(), 7, types.Task{
-		ListID: 8, Title: "Read a book", Priority: types.PriorityHigh,
+		ListID: 8, Title: "Read a book", Priority: types.PriorityHigh, Tags: []types.Tag{{ID: 15}},
 	})
 
 	assert.NoError(t, err)
@@ -128,6 +129,21 @@ func TestCreateTask_EmptyTitle(t *testing.T) {
 	taskRepo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything, mock.Anything)
 }
 
+func TestCreateTask_InvalidTagID(t *testing.T) {
+	taskRepo := new(MockTaskRepository)
+	listRepo := new(MockListRepository)
+	svc := newTaskService(taskRepo, listRepo)
+
+	result, err := svc.CreateTask(context.Background(), 7, types.Task{
+		ListID: 8, Title: "Read a book", Priority: types.PriorityMedium, Tags: []types.Tag{{ID: 0}},
+	})
+
+	assert.ErrorIs(t, err, types.ErrInvalidTask)
+	assert.Empty(t, result)
+	listRepo.AssertNotCalled(t, "FindByIDAndUserID", mock.Anything, mock.Anything, mock.Anything)
+	taskRepo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything, mock.Anything)
+}
+
 func TestCreateTask_RepositoryError(t *testing.T) {
 	repositoryErr := errors.New("database unavailable")
 	taskRepo := new(MockTaskRepository)
@@ -151,9 +167,10 @@ func TestUpdateTask_PassesTaskAndUserIDsToRepository(t *testing.T) {
 	taskRepo := new(MockTaskRepository)
 	listRepo := new(MockListRepository)
 	taskRepo.On("FindByIDAndUserID", mock.Anything, int64(42), int64(7)).
-		Return(&types.Task{ID: 42, ListID: 8}, nil).Once()
+		Return(&types.Task{ID: 42, ListID: 8, Tags: []types.Tag{{ID: 5, Name: "existing"}}}, nil).Once()
 	taskRepo.On("Update", mock.Anything, int64(42), int64(7), mock.MatchedBy(func(task *types.Task) bool {
-		return task.ID == 42 && task.Title == "Updated task"
+		return task.ID == 42 && task.Title == "Updated task" &&
+			assert.Equal(t, []types.Tag{{ID: 5, Name: "existing"}}, task.Tags)
 	})).Return(nil).Once()
 	svc := newTaskService(taskRepo, listRepo)
 
@@ -163,5 +180,25 @@ func TestUpdateTask_PassesTaskAndUserIDsToRepository(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "Updated task", result.Title)
+	taskRepo.AssertExpectations(t)
+}
+
+func TestUpdateTask_ReplacesTagsWhenSpecified(t *testing.T) {
+	taskRepo := new(MockTaskRepository)
+	listRepo := new(MockListRepository)
+	taskRepo.On("FindByIDAndUserID", mock.Anything, int64(42), int64(7)).
+		Return(&types.Task{ID: 42, ListID: 8, Tags: []types.Tag{{ID: 5}}}, nil).Once()
+	taskRepo.On("Update", mock.Anything, int64(42), int64(7), mock.MatchedBy(func(task *types.Task) bool {
+		return assert.Equal(t, []types.Tag{{ID: 9}}, task.Tags)
+	})).Return(nil).Once()
+	svc := newTaskService(taskRepo, listRepo)
+
+	result, err := svc.UpdateTask(context.Background(), 42, 7, types.Task{
+		Title: "Updated task", Status: types.StatusPending, Priority: types.PriorityHigh,
+		Tags: []types.Tag{{ID: 9}},
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, []types.Tag{{ID: 9}}, result.Tags)
 	taskRepo.AssertExpectations(t)
 }

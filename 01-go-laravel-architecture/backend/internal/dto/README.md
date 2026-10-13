@@ -15,7 +15,8 @@ Atualmente, os DTOs estão agrupados por contexto, como autenticação, listas e
 
 - Use DTOs para definir o formato de entrada e saída da API; não os trate como entidades de domínio ou modelos de persistência.
 - Mantenha aqui os nomes JSON e as regras de validação ligadas ao formato recebido pela API.
-- Para `due_date` em tarefas, são aceitos timestamps RFC3339 (por exemplo, `2026-08-01T00:00:00-03:00`) e `YYYY-MM-DD HH:MM:SS` (interpretado como UTC).
+- Datas de tarefas (`due_date`, `created_at` e `updated_at`) usam exclusivamente `YYYY-MM-DD HH:mm`; os valores sem fuso são interpretados e serializados em UTC.
+- Os payloads de criação e atualização de tarefas podem informar `tag_ids`. No Update, omitir a chave preserva os vínculos atuais e enviar `[]` remove todos.
 - Não coloque acesso ao banco, chamadas HTTP ou orquestração de casos de uso nos DTOs.
 - Não exponha dados internos ou sensíveis que não façam parte do contrato público da API.
 - Quando os dados de domínio e o formato da resposta forem diferentes, mantenha a transformação explícita entre eles.

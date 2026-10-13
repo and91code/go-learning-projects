@@ -38,6 +38,10 @@ func (h *TaskHandler) Store(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Lista associada não encontrada"})
 			return
 		}
+		if errors.Is(err, types.ErrTagNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Uma ou mais tags não pertencem à lista"})
+			return
+		}
 		if errors.Is(err, types.ErrInvalidTask) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 			return
@@ -118,6 +122,10 @@ func (h *TaskHandler) Update(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, types.ErrTaskNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, types.ErrTagNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Uma ou mais tags não pertencem à lista"})
 			return
 		}
 		if errors.Is(err, types.ErrInvalidTask) {

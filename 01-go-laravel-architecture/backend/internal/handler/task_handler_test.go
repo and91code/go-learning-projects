@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/seu-usuario/taskflow-backend/internal/middleware"
@@ -67,21 +68,28 @@ func setupTaskHandler(serviceMock *MockTaskService) *gin.Engine {
 
 func TestStore_Success(t *testing.T) {
 	serviceMock := new(MockTaskService)
-	input := types.Task{ListID: 8, Title: "Read a book", Priority: types.PriorityHigh}
+	dueDate := time.Date(2026, time.August, 1, 9, 30, 0, 0, time.UTC)
+	input := types.Task{
+		ListID: 8, Title: "Read a book", Priority: types.PriorityHigh, DueDate: &dueDate,
+		Tags: []types.Tag{{ID: 5}},
+	}
 	expected := input
 	expected.ID = 42
 	expected.Status = types.StatusPending
+	expected.CreatedAt = time.Date(2026, time.August, 1, 10, 0, 0, 0, time.UTC)
+	expected.UpdatedAt = expected.CreatedAt
+	expected.Tags = []types.Tag{{ID: 5, ListID: 8, Name: "urgent", Color: "#ff0000"}}
 	serviceMock.On("CreateTask", mock.Anything, int64(7), input).Return(expected, nil).Once()
 	router := setupTaskHandler(serviceMock)
 
 	request := httptest.NewRequest(http.MethodPost, "/tasks",
-		strings.NewReader(`{"list_id":8,"title":"Read a book","priority":"high"}`))
+		strings.NewReader(`{"list_id":8,"title":"Read a book","priority":"high","due_date":"2026-08-01 09:30","tag_ids":[5]}`))
 	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 
 	assert.Equal(t, http.StatusCreated, response.Code)
-	assert.JSONEq(t, `{"id":42,"list_id":8,"title":"Read a book","priority":"high","status":"pending","created_at":"0001-01-01T00:00:00Z","updated_at":"0001-01-01T00:00:00Z"}`, response.Body.String())
+	assert.JSONEq(t, `{"id":42,"list_id":8,"title":"Read a book","priority":"high","status":"pending","due_date":"2026-08-01 09:30","created_at":"2026-08-01 10:00","updated_at":"2026-08-01 10:00","tags":[{"id":5,"name":"urgent","color":"#ff0000"}]}`, response.Body.String())
 	serviceMock.AssertExpectations(t)
 }
 
@@ -114,6 +122,23 @@ func TestStore_ListNotFound(t *testing.T) {
 	serviceMock.AssertExpectations(t)
 }
 
+func TestStore_TagNotFound(t *testing.T) {
+	serviceMock := new(MockTaskService)
+	serviceMock.On("CreateTask", mock.Anything, int64(7), mock.MatchedBy(func(task types.Task) bool {
+		return assert.Equal(t, []types.Tag{{ID: 99}}, task.Tags)
+	})).Return(types.Task{}, types.ErrTagNotFound).Once()
+	router := setupTaskHandler(serviceMock)
+
+	request := httptest.NewRequest(http.MethodPost, "/tasks",
+		strings.NewReader(`{"list_id":8,"title":"Read a book","priority":"high","tag_ids":[99]}`))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	serviceMock.AssertExpectations(t)
+}
+
 func TestIndexByList_MapsTypesToResponse(t *testing.T) {
 	serviceMock := new(MockTaskService)
 	serviceMock.On("GetTasksByList", mock.Anything, int64(8), int64(7)).
@@ -124,7 +149,7 @@ func TestIndexByList_MapsTypesToResponse(t *testing.T) {
 	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/tasks?list_id=8", nil))
 
 	assert.Equal(t, http.StatusOK, response.Code)
-	assert.JSONEq(t, `[{"id":42,"list_id":8,"title":"Read a book","status":"pending","priority":"high","created_at":"0001-01-01T00:00:00Z","updated_at":"0001-01-01T00:00:00Z"}]`, response.Body.String())
+	assert.JSONEq(t, `[{"id":42,"list_id":8,"title":"Read a book","status":"pending","priority":"high","created_at":"0001-01-01 00:00","updated_at":"0001-01-01 00:00","tags":[]}]`, response.Body.String())
 	serviceMock.AssertExpectations(t)
 }
 
@@ -154,6 +179,23 @@ func TestUpdate_InternalServerError(t *testing.T) {
 	router.ServeHTTP(response, request)
 
 	assert.Equal(t, http.StatusInternalServerError, response.Code)
+	serviceMock.AssertExpectations(t)
+}
+
+func TestUpdate_TagNotFound(t *testing.T) {
+	serviceMock := new(MockTaskService)
+	serviceMock.On("UpdateTask", mock.Anything, int64(42), int64(7), mock.MatchedBy(func(task types.Task) bool {
+		return assert.Equal(t, []types.Tag{{ID: 99}}, task.Tags)
+	})).Return(types.Task{}, types.ErrTagNotFound).Once()
+	router := setupTaskHandler(serviceMock)
+
+	request := httptest.NewRequest(http.MethodPut, "/tasks/42",
+		strings.NewReader(`{"title":"Read a book","status":"pending","priority":"high","tag_ids":[99]}`))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	assert.Equal(t, http.StatusNotFound, response.Code)
 	serviceMock.AssertExpectations(t)
 }
 

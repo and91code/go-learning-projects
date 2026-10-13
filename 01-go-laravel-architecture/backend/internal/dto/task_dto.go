@@ -10,21 +10,24 @@ import (
 
 type TaskDateTime time.Time
 
+const taskDateTimeLayout = "2006-01-02 15:04"
+
 func (t *TaskDateTime) UnmarshalJSON(data []byte) error {
 	var value string
 	if err := json.Unmarshal(data, &value); err != nil {
 		return fmt.Errorf("due_date deve ser uma string: %w", err)
 	}
 
-	for _, layout := range []string{time.RFC3339Nano, "2006-01-02 15:04:05"} {
-		parsed, err := time.Parse(layout, value)
-		if err == nil {
-			*t = TaskDateTime(parsed)
-			return nil
-		}
+	parsed, err := time.ParseInLocation(taskDateTimeLayout, value, time.UTC)
+	if err != nil {
+		return fmt.Errorf("due_date deve estar no formato YYYY-MM-DD HH:mm: %w", err)
 	}
+	*t = TaskDateTime(parsed)
+	return nil
+}
 
-	return fmt.Errorf("due_date deve estar no formato RFC3339 ou YYYY-MM-DD HH:MM:SS")
+func (t TaskDateTime) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Time(t).UTC().Format(taskDateTimeLayout))
 }
 
 type CreateTaskRequest struct {
@@ -33,6 +36,7 @@ type CreateTaskRequest struct {
 	Description string        `json:"description" binding:"omitempty,max=65535"`
 	Priority    string        `json:"priority" binding:"required,oneof=low medium high"`
 	DueDate     *TaskDateTime `json:"due_date"`
+	TagIDs      *[]int64      `json:"tag_ids"`
 }
 
 type UpdateTaskRequest struct {
@@ -41,6 +45,7 @@ type UpdateTaskRequest struct {
 	Status      string        `json:"status" binding:"required,oneof=pending in_progress completed"`
 	Priority    string        `json:"priority" binding:"required,oneof=low medium high"`
 	DueDate     *TaskDateTime `json:"due_date"`
+	TagIDs      *[]int64      `json:"tag_ids"`
 }
 
 type TaskResponse struct {
@@ -50,10 +55,10 @@ type TaskResponse struct {
 	Description string        `json:"description,omitempty"`
 	Status      string        `json:"status"`
 	Priority    string        `json:"priority"`
-	DueDate     *time.Time    `json:"due_date,omitempty"`
-	CreatedAt   time.Time     `json:"created_at"`
-	UpdatedAt   time.Time     `json:"updated_at"`
-	Tags        []TagResponse `json:"tags,omitempty"`
+	DueDate     *TaskDateTime `json:"due_date,omitempty"`
+	CreatedAt   TaskDateTime  `json:"created_at"`
+	UpdatedAt   TaskDateTime  `json:"updated_at"`
+	Tags        []TagResponse `json:"tags"`
 }
 
 func (req CreateTaskRequest) ToDomain() types.Task {
@@ -63,6 +68,7 @@ func (req CreateTaskRequest) ToDomain() types.Task {
 		Description: req.Description,
 		Priority:    types.TaskPriority(req.Priority),
 		DueDate:     taskDateTimeToTime(req.DueDate),
+		Tags:        taskTagsFromIDs(req.TagIDs),
 	}
 }
 
@@ -73,7 +79,19 @@ func (req UpdateTaskRequest) ToDomain() types.Task {
 		Status:      types.TaskStatus(req.Status),
 		Priority:    types.TaskPriority(req.Priority),
 		DueDate:     taskDateTimeToTime(req.DueDate),
+		Tags:        taskTagsFromIDs(req.TagIDs),
 	}
+}
+
+func taskTagsFromIDs(tagIDs *[]int64) []types.Tag {
+	if tagIDs == nil {
+		return nil
+	}
+	tags := make([]types.Tag, 0, len(*tagIDs))
+	for _, id := range *tagIDs {
+		tags = append(tags, types.Tag{ID: id})
+	}
+	return tags
 }
 
 func taskDateTimeToTime(value *TaskDateTime) *time.Time {
@@ -84,7 +102,17 @@ func taskDateTimeToTime(value *TaskDateTime) *time.Time {
 	return &converted
 }
 
+func taskTimeToDateTime(value time.Time) TaskDateTime {
+	return TaskDateTime(value)
+}
+
 func TaskResponseFromDomain(task types.Task) TaskResponse {
+	var dueDate *TaskDateTime
+	if task.DueDate != nil {
+		formattedDueDate := taskTimeToDateTime(*task.DueDate)
+		dueDate = &formattedDueDate
+	}
+
 	response := TaskResponse{
 		ID:          task.ID,
 		ListID:      task.ListID,
@@ -92,15 +120,13 @@ func TaskResponseFromDomain(task types.Task) TaskResponse {
 		Description: task.Description,
 		Status:      string(task.Status),
 		Priority:    string(task.Priority),
-		DueDate:     task.DueDate,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   task.UpdatedAt,
+		DueDate:     dueDate,
+		CreatedAt:   taskTimeToDateTime(task.CreatedAt),
+		UpdatedAt:   taskTimeToDateTime(task.UpdatedAt),
+		Tags:        make([]TagResponse, 0, len(task.Tags)),
 	}
-	if len(task.Tags) > 0 {
-		response.Tags = make([]TagResponse, 0, len(task.Tags))
-		for _, tag := range task.Tags {
-			response.Tags = append(response.Tags, TagResponseFromDomain(tag))
-		}
+	for _, tag := range task.Tags {
+		response.Tags = append(response.Tags, TagResponseFromDomain(tag))
 	}
 	return response
 }
