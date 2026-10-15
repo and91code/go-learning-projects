@@ -69,3 +69,50 @@ func (h *ListHandler) Show(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.ListResponseFromDomain(list))
 }
+
+func (h *ListHandler) Update(c *gin.Context) {
+	userID := c.MustGet(middleware.UserIDKey).(int64)
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID de lista inválido"})
+		return
+	}
+
+	var req dto.UpdateListRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Dados inválidos", "details": err.Error()})
+		return
+	}
+
+	list, err := h.listService.UpdateList(c.Request.Context(), id, userID, req.ToDomain())
+	if err != nil {
+		if errors.Is(err, types.ErrListNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ListResponseFromDomain(list))
+}
+
+func (h *ListHandler) Delete(c *gin.Context) {
+	userID := c.MustGet(middleware.UserIDKey).(int64)
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID de lista inválido"})
+		return
+	}
+
+	if err := h.listService.DeleteList(c.Request.Context(), id, userID); err != nil {
+		if errors.Is(err, types.ErrListNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

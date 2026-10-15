@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/seu-usuario/taskflow-backend/internal/middleware"
 	"github.com/seu-usuario/taskflow-backend/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -38,17 +39,104 @@ func (m *MockAuthService) Login(ctx context.Context, input types.LoginInput) (ty
 	return result, args.Error(1)
 }
 
+func (m *MockAuthService) UpdateProfile(ctx context.Context, id int64, input types.UpdateProfileInput) (types.User, error) {
+	args := m.Called(ctx, id, input)
+	user, _ := args.Get(0).(types.User)
+	return user, args.Error(1)
+}
+
+func (m *MockAuthService) UpdatePassword(ctx context.Context, id int64, input types.UpdatePasswordInput) error {
+	return m.Called(ctx, id, input).Error(0)
+}
+
 func setupAuthHandler(serviceMock *MockAuthService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set(middleware.UserIDKey, int64(1))
+		c.Next()
+	})
 	handler := NewAuthHandler(serviceMock)
 	router.POST("/register", handler.Register)
 	router.POST("/login", handler.Login)
+	router.PUT("/user/profile", handler.UpdateProfile)
+	router.PUT("/user/password", handler.UpdatePassword)
 	return router
 }
 
+func TestAuthUpdateProfile_Success(t *testing.T) {
+	serviceMock := new(MockAuthService)
+	input := types.UpdateProfileInput{Name: "Ana Silva", Email: "ana@example.com"}
+	serviceMock.On("UpdateProfile", mock.Anything, int64(1), input).
+		Return(types.User{ID: 1, Name: input.Name, Email: input.Email}, nil).Once()
+
+	response := requestJSON(setupAuthHandler(serviceMock), http.MethodPut, "/user/profile",
+		`{"name":"Ana Silva","email":"ana@example.com"}`)
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Contains(t, response.Body.String(), `"name":"Ana Silva"`)
+	serviceMock.AssertExpectations(t)
+}
+
+func TestAuthUpdateProfile_InvalidPayload(t *testing.T) {
+	serviceMock := new(MockAuthService)
+
+	response := requestJSON(setupAuthHandler(serviceMock), http.MethodPut, "/user/profile", `{"name":"A","email":"invalido"}`)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	serviceMock.AssertNotCalled(t, "UpdateProfile", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestAuthUpdateProfile_EmailExists(t *testing.T) {
+	serviceMock := new(MockAuthService)
+	serviceMock.On("UpdateProfile", mock.Anything, int64(1), mock.Anything).
+		Return(types.User{}, types.ErrEmailExists).Once()
+
+	response := requestJSON(setupAuthHandler(serviceMock), http.MethodPut, "/user/profile",
+		`{"name":"Ana Silva","email":"ana@example.com"}`)
+
+	assert.Equal(t, http.StatusConflict, response.Code)
+}
+
+func TestAuthUpdatePassword_Success(t *testing.T) {
+	serviceMock := new(MockAuthService)
+	input := types.UpdatePasswordInput{CurrentPassword: "secret1", NewPassword: "newsecret"}
+	serviceMock.On("UpdatePassword", mock.Anything, int64(1), input).Return(nil).Once()
+
+	response := requestJSON(setupAuthHandler(serviceMock), http.MethodPut, "/user/password",
+		`{"current_password":"secret1","new_password":"newsecret"}`)
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	serviceMock.AssertExpectations(t)
+}
+
+func TestAuthUpdatePassword_InvalidPayload(t *testing.T) {
+	serviceMock := new(MockAuthService)
+
+	response := requestJSON(setupAuthHandler(serviceMock), http.MethodPut, "/user/password",
+		`{"current_password":"secret1","new_password":"short"}`)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	serviceMock.AssertNotCalled(t, "UpdatePassword", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestAuthUpdatePassword_WrongCurrentPassword(t *testing.T) {
+	serviceMock := new(MockAuthService)
+	serviceMock.On("UpdatePassword", mock.Anything, int64(1), mock.Anything).
+		Return(types.ErrInvalidCurrentPassword).Once()
+
+	response := requestJSON(setupAuthHandler(serviceMock), http.MethodPut, "/user/password",
+		`{"current_password":"wrongpass","new_password":"newsecret"}`)
+
+	assert.Equal(t, http.StatusUnauthorized, response.Code)
+}
+
 func postJSON(router *gin.Engine, path, body string) *httptest.ResponseRecorder {
-	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	return requestJSON(router, http.MethodPost, path, body)
+}
+
+func requestJSON(router *gin.Engine, method, path, body string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(method, path, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)

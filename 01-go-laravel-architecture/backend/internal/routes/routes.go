@@ -44,6 +44,7 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 		apiProtectedGroup := api.Group("")
 		apiProtectedGroup.Use(middleware.AuthMiddleware())
 		{
+			UserRoutes(modules.Auth)(apiProtectedGroup)
 			ListRoutes(modules.Lists)(apiProtectedGroup)
 			TaskRoutes(modules.Tasks)(apiProtectedGroup)
 			TagRoutes(modules.Tags)(apiProtectedGroup)

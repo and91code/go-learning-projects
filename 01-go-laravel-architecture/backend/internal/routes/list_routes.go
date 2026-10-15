@@ -12,5 +12,7 @@ func ListRoutes(h *handler.ListHandler) RouteRegistrar {
 		list.GET("", h.Index)
 		list.POST("", h.Store)
 		list.GET("/:id", h.Show)
+		list.PUT("/:id", h.Update)
+		list.DELETE("/:id", h.Delete)
 	}
 }

@@ -103,6 +103,72 @@
       }
     },
     {
+      "_id": "req_user_profile_update",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Update Profile",
+      "description": "Atualiza nome e e-mail do usuário autenticado",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/user/profile",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao@email.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_user_password_update",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Update Password",
+      "description": "Atualiza a senha do usuário autenticado",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/user/password",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"current_password\": \"123456\",\n  \"new_password\": \"nova-senha-123\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
       "_id": "fld_lists",
       "_type": "request_group",
       "parentId": "wrk_taskflow_api",

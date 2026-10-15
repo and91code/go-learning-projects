@@ -24,6 +24,16 @@ type LoginInput struct {
 	Password string
 }
 
+type UpdateProfileInput struct {
+	Name  string
+	Email string
+}
+
+type UpdatePasswordInput struct {
+	CurrentPassword string
+	NewPassword     string
+}
+
 type AuthResult struct {
 	Token string
 	User  User
@@ -33,10 +43,14 @@ type UserRepository interface {
 	Create(ctx context.Context, user *User) error
 	FindByEmail(ctx context.Context, email string) (*User, error)
 	FindByID(ctx context.Context, id int64) (*User, error)
+	UpdateProfile(ctx context.Context, id int64, name, email string) error
+	UpdatePassword(ctx context.Context, id int64, passwordHash string) error
 }
 
 type UserService interface {
 	GetUserByID(ctx context.Context, id int64) (User, error)
+	UpdateProfile(ctx context.Context, id int64, input UpdateProfileInput) (User, error)
+	UpdatePassword(ctx context.Context, id int64, input UpdatePasswordInput) error
 }
 
 type AuthService interface {

@@ -13,3 +13,12 @@ func AuthRoutes(h *handler.AuthHandler) RouteRegistrar {
 		auth.POST("/login", h.Login)
 	}
 }
+
+// UserRoutes registra endpoints autenticados de gerenciamento do usuário.
+func UserRoutes(h *handler.AuthHandler) RouteRegistrar {
+	return func(api *gin.RouterGroup) {
+		user := api.Group("/user")
+		user.PUT("/profile", h.UpdateProfile)
+		user.PUT("/password", h.UpdatePassword)
+	}
+}

@@ -1,5 +1,6 @@
 # Ignorar arquivos de ambiente com credenciais sensíveis
 backend/.env
+frontend/.env
 
 # Dados locais persistidos pelo Docker
 .data/

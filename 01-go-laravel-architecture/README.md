@@ -37,6 +37,7 @@ A aplicação consiste em um **Gerenciador de Tarefas (Todo List)** completo e r
   - Cadastro e login de usuários
   - Autenticação via Token JWT
   - Proteção de rotas com Middleware de autorização
+  - Atualização autenticada do perfil e da senha
 - [x] **Gestão de Listas**
   - CRUD completo de listas por usuário
   - Exclusão em cascata (_Cascade Delete_) para tarefas e tags vinculadas
@@ -48,6 +49,27 @@ A aplicação consiste em um **Gerenciador de Tarefas (Todo List)** completo e r
 - [x] **Categorização por Tags**
   - Criação de tags por lista
   - Atribuição de cores visuais (Hexadecimal)
+
+---
+
+## 🐳 Ambiente de desenvolvimento com Docker
+
+Na pasta `01-go-laravel-architecture`, inicie o MySQL, o backend e o frontend com:
+
+```sh
+docker compose up --build
+```
+
+Os arquivos locais `backend/.env` e `frontend/.env` fornecem as configurações de
+cada aplicação. Use `backend/.env-sample` e `frontend/.env-sample` como modelo
+para criá-los em uma nova instalação.
+
+A aplicação estará disponível em `http://localhost:5173` e a API em
+`http://localhost:8080/api/v1`. Para encerrar os serviços, use `docker compose down`.
+Os dados do MySQL ficam em `01-go-laravel-architecture/.data/mysql_data`.
+
+O `JWT_SECRET` pode ser configurado no ambiente antes de subir o Compose; se
+omitido, será usado um valor padrão apenas para desenvolvimento local.
 
 ---
 
@@ -95,3 +117,13 @@ go tool cover -html=coverage.out
 ```
 
 Sem `-tags=unit`, os testes marcados não são incluídos.
+
+### Atualização dos dados do usuário
+
+Os dois endpoints exigem `Authorization: Bearer <token>`:
+
+- `PUT /api/v1/user/profile` recebe `{"name":"Ana Silva","email":"ana@example.com"}`.
+- `PUT /api/v1/user/password` recebe `{"current_password":"senha-atual","new_password":"nova-senha"}`.
+
+O nome deve ter entre 2 e 100 caracteres, o e-mail deve ser válido e a nova senha
+deve ter pelo menos 6 caracteres, seguindo as regras de cadastro.

@@ -33,6 +33,14 @@ func (m *MockUserRepository) FindByID(ctx context.Context, id int64) (*types.Use
 	return user, args.Error(1)
 }
 
+func (m *MockUserRepository) UpdateProfile(ctx context.Context, id int64, name, email string) error {
+	return m.Called(ctx, id, name, email).Error(0)
+}
+
+func (m *MockUserRepository) UpdatePassword(ctx context.Context, id int64, passwordHash string) error {
+	return m.Called(ctx, id, passwordHash).Error(0)
+}
+
 // Cenário: GetUserByID devolve o usuário encontrado.
 func TestGetUserByID_Success(t *testing.T) {
 	repo := new(MockUserRepository)
@@ -54,6 +62,62 @@ func TestGetUserByID_NotFound(t *testing.T) {
 
 	assert.ErrorIs(t, err, types.ErrUserNotFound)
 	assert.Empty(t, user)
+}
+
+func TestUpdateProfile_Success(t *testing.T) {
+	repo := new(MockUserRepository)
+	repo.On("FindByEmail", mock.Anything, "ana@example.com").Return(nil, types.ErrUserNotFound).Once()
+	repo.On("UpdateProfile", mock.Anything, int64(1), "Ana Silva", "ana@example.com").Return(nil).Once()
+	repo.On("FindByID", mock.Anything, int64(1)).
+		Return(&types.User{ID: 1, Name: "Ana Silva", Email: "ana@example.com"}, nil).Once()
+
+	user, err := NewAuthService(repo).UpdateProfile(context.Background(), 1,
+		types.UpdateProfileInput{Name: "Ana Silva", Email: "ana@example.com"})
+
+	assert.NoError(t, err)
+	assert.Equal(t, "Ana Silva", user.Name)
+	repo.AssertExpectations(t)
+}
+
+func TestUpdateProfile_EmailAlreadyExists(t *testing.T) {
+	repo := new(MockUserRepository)
+	repo.On("FindByEmail", mock.Anything, "other@example.com").
+		Return(&types.User{ID: 2}, nil).Once()
+
+	_, err := NewAuthService(repo).UpdateProfile(context.Background(), 1,
+		types.UpdateProfileInput{Name: "Ana", Email: "other@example.com"})
+
+	assert.ErrorIs(t, err, types.ErrEmailExists)
+	repo.AssertNotCalled(t, "UpdateProfile", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUpdatePassword_Success(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("secret1"), bcrypt.MinCost)
+	repo := new(MockUserRepository)
+	repo.On("FindByID", mock.Anything, int64(1)).
+		Return(&types.User{ID: 1, PasswordHash: string(hash)}, nil).Once()
+	repo.On("UpdatePassword", mock.Anything, int64(1), mock.MatchedBy(func(passwordHash string) bool {
+		return bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte("newsecret")) == nil
+	})).Return(nil).Once()
+
+	err := NewAuthService(repo).UpdatePassword(context.Background(), 1,
+		types.UpdatePasswordInput{CurrentPassword: "secret1", NewPassword: "newsecret"})
+
+	assert.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestUpdatePassword_WrongCurrentPassword(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("secret1"), bcrypt.MinCost)
+	repo := new(MockUserRepository)
+	repo.On("FindByID", mock.Anything, int64(1)).
+		Return(&types.User{ID: 1, PasswordHash: string(hash)}, nil).Once()
+
+	err := NewAuthService(repo).UpdatePassword(context.Background(), 1,
+		types.UpdatePasswordInput{CurrentPassword: "wrong", NewPassword: "newsecret"})
+
+	assert.ErrorIs(t, err, types.ErrInvalidCurrentPassword)
+	repo.AssertNotCalled(t, "UpdatePassword", mock.Anything, mock.Anything, mock.Anything)
 }
 
 // Cenário: Register cria o usuário com senha criptografada e devolve um token JWT.

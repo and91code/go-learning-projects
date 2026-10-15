@@ -31,6 +31,37 @@ func (s *authService) GetUserByID(ctx context.Context, id int64) (types.User, er
 	return *user, nil
 }
 
+func (s *authService) UpdateProfile(ctx context.Context, id int64, input types.UpdateProfileInput) (types.User, error) {
+	existing, err := s.userRepo.FindByEmail(ctx, input.Email)
+	switch {
+	case err == nil && existing.ID != id:
+		return types.User{}, types.ErrEmailExists
+	case err != nil && !errors.Is(err, types.ErrUserNotFound):
+		return types.User{}, fmt.Errorf("check existing email for profile update: %w", err)
+	}
+
+	if err := s.userRepo.UpdateProfile(ctx, id, input.Name, input.Email); err != nil {
+		return types.User{}, err
+	}
+	return s.GetUserByID(ctx, id)
+}
+
+func (s *authService) UpdatePassword(ctx context.Context, id int64, input types.UpdatePasswordInput) error {
+	user, err := s.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.CurrentPassword)); err != nil {
+		return types.ErrInvalidCurrentPassword
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("falha ao criptografar senha: %w", err)
+	}
+	return s.userRepo.UpdatePassword(ctx, id, string(hashedPassword))
+}
+
 func (s *authService) Register(ctx context.Context, input types.RegisterInput) (types.AuthResult, error) {
 	_, err := s.userRepo.FindByEmail(ctx, input.Email)
 	switch {

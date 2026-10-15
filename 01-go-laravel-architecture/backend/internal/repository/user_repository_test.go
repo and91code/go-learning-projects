@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-sql-driver/mysql"
 	"github.com/seu-usuario/taskflow-backend/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -121,4 +122,36 @@ func TestUserRepository_FindByID_Error(t *testing.T) {
 	_, err := NewUserRepository(db).FindByID(context.Background(), 1)
 
 	assert.ErrorIs(t, err, errDatabase)
+}
+
+func TestUserRepository_UpdateProfile_Success(t *testing.T) {
+	db, mock := newMockDB(t)
+	mock.ExpectExec("UPDATE users SET name =").
+		WithArgs("Ana", "ana@example.com", int64(1)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := NewUserRepository(db).UpdateProfile(context.Background(), 1, "Ana", "ana@example.com")
+
+	assert.NoError(t, err)
+}
+
+func TestUserRepository_UpdateProfile_EmailExists(t *testing.T) {
+	db, mock := newMockDB(t)
+	mock.ExpectExec("UPDATE users SET name =").
+		WillReturnError(&mysql.MySQLError{Number: 1062, Message: "duplicate email"})
+
+	err := NewUserRepository(db).UpdateProfile(context.Background(), 1, "Ana", "ana@example.com")
+
+	assert.ErrorIs(t, err, types.ErrEmailExists)
+}
+
+func TestUserRepository_UpdatePassword_Success(t *testing.T) {
+	db, mock := newMockDB(t)
+	mock.ExpectExec("UPDATE users SET password_hash =").
+		WithArgs("hash", int64(1)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := NewUserRepository(db).UpdatePassword(context.Background(), 1, "hash")
+
+	assert.NoError(t, err)
 }

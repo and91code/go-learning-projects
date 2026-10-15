@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/seu-usuario/taskflow-backend/internal/types"
 )
 
@@ -64,4 +65,25 @@ func (r *mysqlUserRepository) FindByID(ctx context.Context, id int64) (*types.Us
 	}
 
 	return &u, nil
+}
+
+func (r *mysqlUserRepository) UpdateProfile(ctx context.Context, id int64, name, email string) error {
+	query := `UPDATE users SET name = ?, email = ? WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, name, email, id)
+	if err != nil {
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			return types.ErrEmailExists
+		}
+		return fmt.Errorf("userRepository.UpdateProfile: %w", err)
+	}
+	return nil
+}
+
+func (r *mysqlUserRepository) UpdatePassword(ctx context.Context, id int64, passwordHash string) error {
+	query := `UPDATE users SET password_hash = ? WHERE id = ?`
+	if _, err := r.db.ExecContext(ctx, query, passwordHash, id); err != nil {
+		return fmt.Errorf("userRepository.UpdatePassword: %w", err)
+	}
+	return nil
 }

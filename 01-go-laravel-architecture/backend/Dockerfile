@@ -1,5 +1,5 @@
 # Imagem oficial do Go
-FROM golang:1.25-alpine
+FROM golang:1.26-alpine
 
 # Instala ferramentas básicas de build
 RUN apk add --no-cache git gcc musl-dev

@@ -17,6 +17,16 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type UpdateProfileRequest struct {
+	Name  string `json:"name" binding:"required,min=2,max=100"`
+	Email string `json:"email" binding:"required,email"`
+}
+
+type UpdatePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+}
+
 type AuthResponse struct {
 	Token string       `json:"token"`
 	User  UserResponse `json:"user"`
@@ -41,6 +51,17 @@ func (req LoginRequest) ToDomain() types.LoginInput {
 	return types.LoginInput{
 		Email:    req.Email,
 		Password: req.Password,
+	}
+}
+
+func (req UpdateProfileRequest) ToDomain() types.UpdateProfileInput {
+	return types.UpdateProfileInput{Name: req.Name, Email: req.Email}
+}
+
+func (req UpdatePasswordRequest) ToDomain() types.UpdatePasswordInput {
+	return types.UpdatePasswordInput{
+		CurrentPassword: req.CurrentPassword,
+		NewPassword:     req.NewPassword,
 	}
 }
 
