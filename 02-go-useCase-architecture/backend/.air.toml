@@ -1,0 +1,14 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o /tmp/taskflow-backend ."
+bin = "/tmp/taskflow-backend"
+include_ext = ["go", "mod", "sum"]
+exclude_dir = ["tmp", "vendor"]
+poll = true
+poll_interval = 500
+delay = 1000
+stop_on_error = true
+send_interrupt = true
+kill_delay = "500ms"

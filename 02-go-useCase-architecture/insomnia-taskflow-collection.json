@@ -1,0 +1,616 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-10-13T18:14:59.238-03:00",
+  "__export_source": "copilot-sdk",
+  "resources": [
+    {
+      "_id": "wrk_taskflow_api",
+      "_type": "workspace",
+      "parentId": null,
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Taskflow API",
+      "description": "Coleção de requests para autenticação, listas, tarefas e tags da API Go",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_taskflow_api",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8080/api/v1",
+        "token": "<insira_o_token_aqui>"
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 0
+    },
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "parentId": "wrk_taskflow_api",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Auth",
+      "description": "Autenticação e cadastro de usuários"
+    },
+    {
+      "_id": "req_auth_register",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Register",
+      "description": "Cria um novo usuário",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/register",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao@email.com\",\n  \"password\": \"123456\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "none"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_auth_login",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Login",
+      "description": "Autentica um usuário e retorna JWT",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/login",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"dev@example.com\",\n  \"password\": \"secretpassword\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "none"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_user_profile_update",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Update Profile",
+      "description": "Atualiza nome e e-mail do usuário autenticado",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/user/profile",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao@email.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_user_password_update",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Update Password",
+      "description": "Atualiza a senha do usuário autenticado",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/user/password",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"current_password\": \"123456\",\n  \"new_password\": \"nova-senha-123\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "fld_lists",
+      "_type": "request_group",
+      "parentId": "wrk_taskflow_api",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Lists",
+      "description": "Operações de listas do usuário"
+    },
+    {
+      "_id": "req_lists_index",
+      "_type": "request",
+      "parentId": "fld_lists",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Index",
+      "description": "Lista todas as listas do usuário autenticado",
+      "method": "GET",
+      "url": "{{ _.base_url }}/list",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_lists_store",
+      "_type": "request",
+      "parentId": "fld_lists",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Create",
+      "description": "Cria uma nova lista",
+      "method": "POST",
+      "url": "{{ _.base_url }}/list",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"Trabalho\",\n  \"description\": \"Lista para tarefas do trabalho\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_lists_show",
+      "_type": "request",
+      "parentId": "fld_lists",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Show",
+      "description": "Busca uma lista pelo ID",
+      "method": "GET",
+      "url": "{{ _.base_url }}/list/1",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "fld_tasks",
+      "_type": "request_group",
+      "parentId": "wrk_taskflow_api",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Tasks",
+      "description": "Operações de tarefas por lista"
+    },
+    {
+      "_id": "req_tasks_index",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Index by List",
+      "description": "Lista tarefas de uma lista específica",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks?list_id=1",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_tasks_store",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Create",
+      "description": "Cria uma nova tarefa na lista",
+      "method": "POST",
+      "url": "{{ _.base_url }}/tasks",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"list_id\": 1,\n  \"title\": \"Implementar API de tags\",\n  \"description\": \"Criar endpoints para CRUD de tags e validar regras de negócio.\",\n  \"priority\": \"high\",\n  \"due_date\": \"2026-10-20 18:00\",\n  \"tag_ids\": [1, 2]\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_tasks_show",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Show",
+      "description": "Busca uma tarefa pelo ID",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/1",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_tasks_update",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Update",
+      "description": "Atualiza uma tarefa existente",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/tasks/1",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"Implementar API de tags e filtros\",\n  \"description\": \"Completar a API de tags e revisar validações.\",\n  \"status\": \"in_progress\",\n  \"priority\": \"medium\",\n  \"due_date\": \"2026-10-25 16:00\",\n  \"tag_ids\": [1, 2]\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_tasks_delete",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Delete",
+      "description": "Remove uma tarefa do sistema",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/tasks/1",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "fld_tags",
+      "_type": "request_group",
+      "parentId": "wrk_taskflow_api",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Tags",
+      "description": "Operações de tags por lista"
+    },
+    {
+      "_id": "req_tags_index",
+      "_type": "request",
+      "parentId": "fld_tags",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Index by List",
+      "description": "Lista as tags de uma lista específica",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tags?list_id=1",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_tags_store",
+      "_type": "request",
+      "parentId": "fld_tags",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Create",
+      "description": "Cria uma tag para a lista",
+      "method": "POST",
+      "url": "{{ _.base_url }}/tags",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"list_id\": 1,\n  \"name\": \"Urgente\",\n  \"color\": \"#FF5A5F\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_tags_show",
+      "_type": "request",
+      "parentId": "fld_tags",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Show",
+      "description": "Busca uma tag pelo ID",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tags/1",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_tags_update",
+      "_type": "request",
+      "parentId": "fld_tags",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Update",
+      "description": "Atualiza uma tag existente",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/tags/1",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"list_id\": 1,\n  \"name\": \"Prioridade Máxima\",\n  \"color\": \"#FF0000\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    },
+    {
+      "_id": "req_tags_delete",
+      "_type": "request",
+      "parentId": "fld_tags",
+      "modified": 1759854899000,
+      "created": 1759854899000,
+      "name": "Delete",
+      "description": "Remove uma tag da lista",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/tags/1",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "settings": {
+        "renderRequestBody": true,
+        "encodeUrl": true,
+        "followRedirects": "global",
+        "cookies": [],
+        "headers": [],
+        "useMimeType": true
+      }
+    }
+  ]
+}
