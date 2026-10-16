@@ -2,7 +2,7 @@ services:
   # Banco de Dados MySQL
   db:
     image: mysql:8.0
-    container_name: taskflow_mysql
+    container_name: taskflow_mysql-01
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
@@ -22,7 +22,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: taskflow_backend
+    container_name: taskflow_backend-01
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -47,7 +47,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: taskflow_frontend
+    container_name: taskflow_frontend-01
     restart: unless-stopped
     ports:
       - "5173:5173"
